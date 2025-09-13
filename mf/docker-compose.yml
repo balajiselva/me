@@ -36,20 +36,25 @@ services:
       - mediafusion-network
 
   redis:
-    image: redis:latest
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis-data:/data
-    command: redis-server --appendonly yes --save 60 1
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "redis-cli --raw INFO | grep -q '^loading:0$'"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - mediafusion-network
+  image: redis:latest
+  ports:
+    - "6379:6379"
+  volumes:
+    - redis-data:/data
+  command: redis-server --appendonly yes --save 60 1
+  restart: unless-stopped
+  healthcheck:
+    test: ["CMD", "redis-cli", "ping"]
+    interval: 10s
+    timeout: 5s
+    retries: 5
+  logging:
+    driver: "json-file"
+    options:
+      max-size: "10m"
+      max-file: "3"
+  networks:
+    - mediafusion-network
 
   dramatiq-worker:
     image: mhdzumair/mediafusion:4.3.34
