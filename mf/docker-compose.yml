@@ -95,12 +95,12 @@ services:
   browserless:
     image: ghcr.io/browserless/chromium
     ports:
-      - "3000:3000"
+      - "3001:3001"
     environment:
       - TIMEOUT=-1
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/json/version"]
+      test: ["CMD", "curl", "-f", "http://localhost:3001/json/version"]
       interval: 30s
       timeout: 10s
       retries: 3
