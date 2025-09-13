@@ -1,138 +1,136 @@
+version: "3.9"
+
 services:
-  mediafusion:
-    image: mhdzumair/mediafusion
+  mongodb:
+    image: mongo:6.0
+    container_name: mediafusion_mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: mfuser
+      MONGO_INITDB_ROOT_PASSWORD: mfpass123
+      MONGO_INITDB_DATABASE: mediafusion
+    volumes:
+      - mongo_data:/data/db
     ports:
-      - "8000:8000"
-    env_file: .env
+      - "27017:27017"
+    healthcheck:
+      test: ["CMD-SHELL", "echo 'db.runCommand({ ping: 1 })' | mongosh --quiet -u mfuser -p mfpass123 --authenticationDatabase admin mediafusion"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      mediafusion-network: {}
+
+  redis:
+    image: redis:7.2
+    container_name: mediafusion_redis
+    restart: unless-stopped
+    command: redis-server --requirepass redispw123 --appendonly yes --save 60 1
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a redispw123 ping | grep PONG || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      mediafusion-network: {}
+
+  mediafusion:
+    image: mhdzumair/mediafusion:4.3.34
+    container_name: mediafusion_app
+    restart: unless-stopped
+    env_file:
+      - .env
     depends_on:
       mongodb:
         condition: service_healthy
       redis:
         condition: service_healthy
+    ports:
+      - "8000:8000"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 1m
       timeout: 10s
       retries: 5
-      start_period: 20m
-    restart: unless-stopped
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+      start_period: 20s
     networks:
       mediafusion-network: {}
 
-  mongodb:
-  image: mongo:6.0
-  environment:
-    MONGO_INITDB_ROOT_USERNAME: mediafusion
-    MONGO_INITDB_ROOT_PASSWORD: mfpass123
-    MONGO_INITDB_DATABASE: mediafusion
-  volumes:
-    - mongo-data:/data/db
-  ports:
-    - "27017:27017"
-  restart: unless-stopped
-  networks:
-    mediafusion-network: {}
-
-redis:
-  image: redis:7.2
-  command: redis-server --requirepass redispw123 --appendonly yes --save 60 1
-  environment:
-    REDIS_PASSWORD: redispw123
-  ports:
-    - "6379:6379"
-  volumes:
-    - redis-data:/data
-  restart: unless-stopped
-  networks:
-    mediafusion-network: {}
-
   dramatiq-worker:
-    image: mhdzumair/mediafusion
+    image: mhdzumair/mediafusion:4.3.34
+    container_name: mediafusion_worker
     command: ["dramatiq", "api.task", "-p", "1", "-t", "4"]
-    env_file: .env
+    env_file:
+      - .env
     depends_on:
       mongodb:
         condition: service_healthy
       redis:
         condition: service_healthy
     restart: unless-stopped
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
     networks:
       mediafusion-network: {}
 
   prowlarr:
     image: ghcr.io/hotio/prowlarr:latest
+    container_name: prowlarr
     environment:
-      - PUID=1000
-      - PGID=1000
-      - UMASK=002
-      - TZ=${TZ:-UTC}
+      PUID: 1000
+      PGID: 1000
+      UMASK: "002"
+      TZ: ${TZ:-UTC}
     ports:
       - "9696:9696"
     volumes:
-      - prowlarr-config:/config
+      - prowlarr_config:/config
     restart: unless-stopped
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
     networks:
       mediafusion-network: {}
 
   flaresolverr:
     image: ghcr.io/flaresolverr/flaresolverr:latest
-    ports:
-      - "8191:8191"
+    container_name: flaresolverr
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8191/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+      start_period: 20s
+    ports:
+      - "8191:8191"
     networks:
       mediafusion-network: {}
 
   browserless:
     image: ghcr.io/browserless/chromium
-    ports:
-      - "3001:3001"
+    container_name: browserless
     environment:
-      - TIMEOUT=-1
+      TIMEOUT: "-1"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/json/version"]
       interval: 30s
       timeout: 10s
       retries: 3
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+      start_period: 20s
+    ports:
+      - "3000:3000"
     networks:
       mediafusion-network: {}
 
 volumes:
-  mongo-data:
+  mongo_data:
     driver: local
-  prowlarr-config:
+  redis_data:
     driver: local
-  redis-data:
+  prowlarr_config:
     driver: local
 
 networks:
