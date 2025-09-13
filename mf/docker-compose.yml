@@ -25,52 +25,31 @@ services:
       mediafusion-network: {}
 
   mongodb:
-    image: mongo:6.0
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: mediafusion
-      MONGO_INITDB_ROOT_PASSWORD: mfpass123
-      MONGO_INITDB_DATABASE: mediafusion
-    volumes:
-      - mongo-data:/data/db
-    ports:
-      - "27017:27017"
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "mongosh", "-u", "mediafusion", "-p", "mfpass123", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 10s
-      retries: 5
-      start_period: 40s
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-    networks:
-      mediafusion-network: {}
+  image: mongo:6.0
+  environment:
+    MONGO_INITDB_ROOT_USERNAME: mediafusion
+    MONGO_INITDB_ROOT_PASSWORD: mfpass123
+    MONGO_INITDB_DATABASE: mediafusion
+  volumes:
+    - mongo-data:/data/db
+  ports:
+    - "27017:27017"
+  restart: unless-stopped
+  networks:
+    mediafusion-network: {}
 
-  redis:
-    image: redis:7.2
-    command: redis-server --requirepass redispw123 --appendonly yes --save 60 1
-    environment:
-      REDIS_PASSWORD: redispw123
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis-data:/data
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "redis-cli", "-a", "redispw123", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-    networks:
-      mediafusion-network: {}
+redis:
+  image: redis:7.2
+  command: redis-server --requirepass redispw123 --appendonly yes --save 60 1
+  environment:
+    REDIS_PASSWORD: redispw123
+  ports:
+    - "6379:6379"
+  volumes:
+    - redis-data:/data
+  restart: unless-stopped
+  networks:
+    mediafusion-network: {}
 
   dramatiq-worker:
     image: mhdzumair/mediafusion
